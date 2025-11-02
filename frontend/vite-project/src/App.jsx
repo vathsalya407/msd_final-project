@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, User, MapPin, Check, Clock, Bike, Star, LogOut, Package, ChefHat } from 'lucide-react';
 import './App.css';
 
-// CRITICAL FIX: API_URL must already include /api
+// API_URL should NOT have /api at the end - we add it in each endpoint
 const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com';
 
 console.log('🔍 API_URL configured as:', API_URL);
+console.log('🔍 Environment check:', import.meta.env.VITE_API_URL ? 'ENV VAR SET' : 'USING DEFAULT');
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -60,7 +61,6 @@ function AuthPage({ onLogin }) {
     e.preventDefault();
     setLoading(true);
     
-    // Build the complete URL - API_URL already has /api
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
     const url = `${API_URL}${endpoint}`;
     
@@ -79,7 +79,6 @@ function AuthPage({ onLogin }) {
       
       console.log('📥 Response status:', response.status);
       
-      // Check if response is ok
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Error response:', errorText);
@@ -241,7 +240,9 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/food/items`);
+      const url = `${API_URL}/api/food/items`;
+      console.log('📤 Fetching food items from:', url);
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -253,7 +254,9 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/customer/${user._id}`);
+      const url = `${API_URL}/api/orders/customer/${user._id}`;
+      console.log('📤 Fetching orders from:', url);
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -303,7 +306,9 @@ function CustomerApp({ user, onLogout }) {
     };
 
     try {
-      const response = await fetch(`${API_URL}/api/orders/create`, {
+      const url = `${API_URL}/api/orders/create`;
+      console.log('📤 Placing order to:', url);
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
@@ -322,7 +327,9 @@ function CustomerApp({ user, onLogout }) {
 
   const submitFeedback = async (orderId, rating, comment) => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/feedback`, {
+      const url = `${API_URL}/api/orders/feedback`;
+      console.log('📤 Submitting feedback to:', url);
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, rating, comment })
@@ -730,7 +737,9 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/all`);
+      const url = `${API_URL}/api/orders/all`;
+      console.log('📤 Fetching all orders from:', url);
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -742,7 +751,9 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(`${API_URL}/api/food/items`);
+      const url = `${API_URL}/api/food/items`;
+      console.log('📤 Fetching food items from:', url);
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -754,7 +765,9 @@ function OwnerDashboard({ user, onLogout }) {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/update-status`, {
+      const url = `${API_URL}/api/orders/update-status`;
+      console.log('📤 Updating order status at:', url);
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, status })
@@ -772,7 +785,9 @@ function OwnerDashboard({ user, onLogout }) {
   const addFoodItem = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_URL}/api/food/add`, {
+      const url = `${API_URL}/api/food/add`;
+      console.log('📤 Adding food item to:', url);
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFood)
@@ -786,6 +801,7 @@ function OwnerDashboard({ user, onLogout }) {
         fetchFoodItems();
       }
     } catch (error) {
+      console.error('Error adding food item:', error);
       alert('Error adding food item');
     }
   };
@@ -794,7 +810,9 @@ function OwnerDashboard({ user, onLogout }) {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/api/food/delete/${id}`, {
+      const url = `${API_URL}/api/food/delete/${id}`;
+      console.log('📤 Deleting food item from:', url);
+      const response = await fetch(url, {
         method: 'DELETE'
       });
       
