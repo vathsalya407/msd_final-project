@@ -61,7 +61,7 @@ function AuthPage({ onLogin }) {
     setLoading(true);
     
     // Build the complete URL - API_URL already has /api
-    const endpoint = isLogin ? '/auth/login' : '/auth/register';
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
     const url = `${API_URL}${endpoint}`;
     
     console.log('📤 Making request to:', url);
