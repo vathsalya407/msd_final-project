@@ -3,7 +3,7 @@ import { ShoppingCart, User, MapPin, Check, Clock, Bike, Star, LogOut, Package, 
 import './App.css';
 
 // CRITICAL FIX: API_URL must already include /api
-const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com';
 
 console.log('🔍 API_URL configured as:', API_URL);
 
