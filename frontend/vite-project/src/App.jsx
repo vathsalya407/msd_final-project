@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, User, MapPin, Check, Clock, Bike, Star, LogOut, Package, ChefHat } from 'lucide-react';
 import './App.css';
 
-// FIXED: Correct API URL configuration
+// CRITICAL FIX: API_URL must already include /api
 const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com/api';
+
+console.log('🔍 API_URL configured as:', API_URL);
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -58,10 +60,12 @@ function AuthPage({ onLogin }) {
     e.preventDefault();
     setLoading(true);
     
+    // Build the complete URL - API_URL already has /api
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
     const url = `${API_URL}${endpoint}`;
     
-    console.log('Making request to:', url);
+    console.log('📤 Making request to:', url);
+    console.log('📦 Sending data:', { ...formData, role, password: '***' });
     
     try {
       const response = await fetch(url, {
@@ -73,22 +77,27 @@ function AuthPage({ onLogin }) {
         body: JSON.stringify({ ...formData, role })
       });
       
+      console.log('📥 Response status:', response.status);
+      
       // Check if response is ok
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
       
       const data = await response.json();
-      console.log('Response:', data);
+      console.log('✅ Response data:', data);
       
       if (data.success) {
+        alert('Success! Logging you in...');
         onLogin(data.user);
       } else {
         alert(data.message || 'Authentication failed');
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert(`Error: ${error.message}. Please check if backend is running at ${API_URL}`);
+      console.error('❌ Fetch error:', error);
+      alert(`Error: ${error.message}\n\nTrying to reach: ${url}\n\nPlease check:\n1. Backend is deployed and running\n2. URL is correct\n3. CORS is configured`);
     } finally {
       setLoading(false);
     }
@@ -204,8 +213,8 @@ function AuthPage({ onLogin }) {
           </button>
         </form>
         
-        <p style={{fontSize: '12px', color: '#666', marginTop: '10px', textAlign: 'center'}}>
-          API: {API_URL}
+        <p style={{fontSize: '11px', color: '#666', marginTop: '10px', textAlign: 'center', wordBreak: 'break-all'}}>
+          Backend API: {API_URL}
         </p>
       </div>
     </div>
