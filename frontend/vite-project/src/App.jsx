@@ -241,7 +241,7 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(`${API_URL}/food/items`);
+      const response = await fetch(`${API_URL}/api/food/items`);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -253,7 +253,7 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/customer/${user._id}`);
+      const response = await fetch(`${API_URL}/api/orders/customer/${user._id}`);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -303,7 +303,7 @@ function CustomerApp({ user, onLogout }) {
     };
 
     try {
-      const response = await fetch(`${API_URL}/orders/create`, {
+      const response = await fetch(`${API_URL}/api/orders/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
@@ -322,7 +322,7 @@ function CustomerApp({ user, onLogout }) {
 
   const submitFeedback = async (orderId, rating, comment) => {
     try {
-      const response = await fetch(`${API_URL}/orders/feedback`, {
+      const response = await fetch(`${API_URL}/api/orders/feedback`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, rating, comment })
@@ -730,7 +730,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(`${API_URL}/orders/all`);
+      const response = await fetch(`${API_URL}/api/orders/all`);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -742,7 +742,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(`${API_URL}/food/items`);
+      const response = await fetch(`${API_URL}/api/food/items`);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -754,7 +754,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const response = await fetch(`${API_URL}/orders/update-status`, {
+      const response = await fetch(`${API_URL}/api/orders/update-status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, status })
@@ -772,7 +772,7 @@ function OwnerDashboard({ user, onLogout }) {
   const addFoodItem = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${API_URL}/food/add`, {
+      const response = await fetch(`${API_URL}/api/food/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFood)
@@ -794,7 +794,7 @@ function OwnerDashboard({ user, onLogout }) {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      const response = await fetch(`${API_URL}/food/delete/${id}`, {
+      const response = await fetch(`${API_URL}/api/food/delete/${id}`, {
         method: 'DELETE'
       });
       
