@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, User, MapPin, Check, Clock, Bike, Star, LogOut, Package, ChefHat } from 'lucide-react';
 import './App.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://your-backend-name.onrender.com/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com';
 export default function App() {
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(true);
