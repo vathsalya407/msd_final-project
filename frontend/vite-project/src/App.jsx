@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, User, MapPin, Check, Clock, Bike, Star, LogOut, Package, ChefHat } from 'lucide-react';
 import './App.css';
 
+// FIXED: Correct API URL configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://msd-backend-mgv8.onrender.com/api';
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [showAuth, setShowAuth] = useState(true);
@@ -42,6 +44,7 @@ export default function App() {
 function AuthPage({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState('customer');
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -53,23 +56,41 @@ function AuthPage({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    
     const endpoint = isLogin ? '/auth/login' : '/auth/register';
+    const url = `${API_URL}${endpoint}`;
+    
+    console.log('Making request to:', url);
     
     try {
-      const response = await fetch(API_URL + endpoint, {
+      const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({ ...formData, role })
       });
       
+      // Check if response is ok
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
+      console.log('Response:', data);
+      
       if (data.success) {
         onLogin(data.user);
       } else {
-        alert(data.message);
+        alert(data.message || 'Authentication failed');
       }
     } catch (error) {
-      alert('Error connecting to server. Please make sure backend is running on port 5000');
+      console.error('Error:', error);
+      alert(`Error: ${error.message}. Please check if backend is running at ${API_URL}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -178,10 +199,14 @@ function AuthPage({ onLogin }) {
             </>
           )}
 
-          <button type="submit" className="submit-btn">
-            {isLogin ? 'Login' : 'Register'}
+          <button type="submit" className="submit-btn" disabled={loading}>
+            {loading ? 'Please wait...' : (isLogin ? 'Login' : 'Register')}
           </button>
         </form>
+        
+        <p style={{fontSize: '12px', color: '#666', marginTop: '10px', textAlign: 'center'}}>
+          API: {API_URL}
+        </p>
       </div>
     </div>
   );
@@ -207,7 +232,7 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(API_URL + '/food/items');
+      const response = await fetch(`${API_URL}/food/items`);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -219,7 +244,7 @@ function CustomerApp({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(API_URL + `/orders/customer/${user._id}`);
+      const response = await fetch(`${API_URL}/orders/customer/${user._id}`);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -269,7 +294,7 @@ function CustomerApp({ user, onLogout }) {
     };
 
     try {
-      const response = await fetch(API_URL + '/orders/create', {
+      const response = await fetch(`${API_URL}/orders/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderData)
@@ -288,7 +313,7 @@ function CustomerApp({ user, onLogout }) {
 
   const submitFeedback = async (orderId, rating, comment) => {
     try {
-      const response = await fetch(API_URL + '/orders/feedback', {
+      const response = await fetch(`${API_URL}/orders/feedback`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, rating, comment })
@@ -696,7 +721,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(API_URL + '/orders/all');
+      const response = await fetch(`${API_URL}/orders/all`);
       const data = await response.json();
       if (data.success) {
         setOrders(data.orders);
@@ -708,7 +733,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const fetchFoodItems = async () => {
     try {
-      const response = await fetch(API_URL + '/food/items');
+      const response = await fetch(`${API_URL}/food/items`);
       const data = await response.json();
       if (data.success) {
         setFoodItems(data.items);
@@ -720,7 +745,7 @@ function OwnerDashboard({ user, onLogout }) {
 
   const updateOrderStatus = async (orderId, status) => {
     try {
-      const response = await fetch(API_URL + '/orders/update-status', {
+      const response = await fetch(`${API_URL}/orders/update-status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, status })
@@ -738,7 +763,7 @@ function OwnerDashboard({ user, onLogout }) {
   const addFoodItem = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(API_URL + '/food/add', {
+      const response = await fetch(`${API_URL}/food/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFood)
@@ -760,7 +785,7 @@ function OwnerDashboard({ user, onLogout }) {
     if (!confirm('Are you sure you want to delete this item?')) return;
     
     try {
-      const response = await fetch(API_URL + `/food/delete/${id}`, {
+      const response = await fetch(`${API_URL}/food/delete/${id}`, {
         method: 'DELETE'
       });
       

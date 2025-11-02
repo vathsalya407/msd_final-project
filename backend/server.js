@@ -1,24 +1,38 @@
-// server.js - Complete Backend in One File
+// server.js - Fixed Backend for Deployment
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
 
-// Middleware - CORS with environment variable support
+// IMPORTANT: Middleware must be configured BEFORE routes
+// CORS Configuration - Allow your frontend domain
 app.use(cors({
-  origin: process.env.FRONTEND_URL || '*',
-  credentials: true
+  origin: [
+    'https://frontend-1-z7vg.onrender.com',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
 
-// MongoDB Connection - Updated with environment variable and better error handling
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://231fa04195user:vasu@food.5rxumwc.mongodb.net/food?retryWrites=true&w=majority&appName=food', {
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// MongoDB Connection
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://231fa04195user:vasu@food.5rxumwc.mongodb.net/food?retryWrites=true&w=majority&appName=food';
+
+mongoose.connect(MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
 .then(() => console.log('✅ Connected to MongoDB Atlas'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+  process.exit(1);
+});
 
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, '❌ Connection error:'));
@@ -85,7 +99,16 @@ app.get('/', (req, res) => {
   res.json({ 
     message: 'FoodExpress API is running!', 
     status: 'OK',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
+  });
+});
+
+// API Health check
+app.get('/api', (req, res) => {
+  res.json({ 
+    message: 'FoodExpress API is working!', 
+    status: 'OK'
   });
 });
 
@@ -94,9 +117,14 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password, phone, address, role, restaurantName } = req.body;
     
+    // Validation
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.json({ success: false, message: 'Email already exists' });
+      return res.status(400).json({ success: false, message: 'Email already exists' });
     }
 
     const user = new User({ 
@@ -105,14 +133,14 @@ app.post('/api/auth/register', async (req, res) => {
       password, 
       phone, 
       address, 
-      role,
+      role: role || 'customer',
       restaurantName: role === 'owner' ? restaurantName : undefined
     });
     await user.save();
 
     console.log('✅ User registered:', email);
 
-    res.json({ 
+    res.status(201).json({ 
       success: true, 
       message: 'Registration successful',
       user: { 
@@ -127,7 +155,7 @@ app.post('/api/auth/register', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Registration error:', error);
-    res.json({ success: false, message: 'Registration failed' });
+    res.status(500).json({ success: false, message: 'Registration failed: ' + error.message });
   }
 });
 
@@ -135,9 +163,14 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
     
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password required' });
+    }
+    
     const user = await User.findOne({ email, password, role });
     if (!user) {
-      return res.json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid credentials or role' });
     }
 
     console.log('✅ User logged in:', email);
@@ -157,7 +190,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.json({ success: false, message: 'Login failed' });
+    res.status(500).json({ success: false, message: 'Login failed: ' + error.message });
   }
 });
 
@@ -169,7 +202,7 @@ app.get('/api/food/items', async (req, res) => {
     res.json({ success: true, items });
   } catch (error) {
     console.error('❌ Fetch items error:', error);
-    res.json({ success: false, message: 'Failed to fetch items' });
+    res.status(500).json({ success: false, message: 'Failed to fetch items' });
   }
 });
 
@@ -182,7 +215,7 @@ app.post('/api/food/add', async (req, res) => {
     
     console.log('✅ Food item saved to DB:', savedFood._id);
     
-    res.json({ success: true, message: 'Food item added', food: savedFood });
+    res.status(201).json({ success: true, message: 'Food item added', food: savedFood });
   } catch (error) {
     console.error('❌ Error saving food item:', error);
     res.status(500).json({ success: false, message: 'Failed to add food item', error: error.message });
@@ -191,12 +224,15 @@ app.post('/api/food/add', async (req, res) => {
 
 app.delete('/api/food/delete/:id', async (req, res) => {
   try {
-    await Food.findByIdAndDelete(req.params.id);
+    const result = await Food.findByIdAndDelete(req.params.id);
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'Food item not found' });
+    }
     console.log('🗑️ Food item deleted:', req.params.id);
     res.json({ success: true, message: 'Food item deleted' });
   } catch (error) {
     console.error('❌ Delete error:', error);
-    res.json({ success: false, message: 'Failed to delete food item' });
+    res.status(500).json({ success: false, message: 'Failed to delete food item' });
   }
 });
 
@@ -206,10 +242,10 @@ app.post('/api/orders/create', async (req, res) => {
     const order = new Order(req.body);
     const savedOrder = await order.save();
     console.log('✅ Order created:', savedOrder._id);
-    res.json({ success: true, message: 'Order placed successfully', order: savedOrder });
+    res.status(201).json({ success: true, message: 'Order placed successfully', order: savedOrder });
   } catch (error) {
     console.error('❌ Create order error:', error);
-    res.json({ success: false, message: 'Failed to place order' });
+    res.status(500).json({ success: false, message: 'Failed to place order' });
   }
 });
 
@@ -220,7 +256,7 @@ app.get('/api/orders/customer/:customerId', async (req, res) => {
     res.json({ success: true, orders });
   } catch (error) {
     console.error('❌ Fetch customer orders error:', error);
-    res.json({ success: false, message: 'Failed to fetch orders' });
+    res.status(500).json({ success: false, message: 'Failed to fetch orders' });
   }
 });
 
@@ -231,7 +267,7 @@ app.get('/api/orders/all', async (req, res) => {
     res.json({ success: true, orders });
   } catch (error) {
     console.error('❌ Fetch all orders error:', error);
-    res.json({ success: false, message: 'Failed to fetch orders' });
+    res.status(500).json({ success: false, message: 'Failed to fetch orders' });
   }
 });
 
@@ -243,11 +279,14 @@ app.put('/api/orders/update-status', async (req, res) => {
       { status },
       { new: true }
     );
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
     console.log('✅ Order status updated:', orderId, '→', status);
     res.json({ success: true, message: 'Order status updated', order });
   } catch (error) {
     console.error('❌ Update status error:', error);
-    res.json({ success: false, message: 'Failed to update order status' });
+    res.status(500).json({ success: false, message: 'Failed to update order status' });
   }
 });
 
@@ -265,17 +304,40 @@ app.put('/api/orders/feedback', async (req, res) => {
       },
       { new: true }
     );
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
     console.log('✅ Feedback submitted for order:', orderId);
     res.json({ success: true, message: 'Feedback submitted', order });
   } catch (error) {
     console.error('❌ Feedback error:', error);
-    res.json({ success: false, message: 'Failed to submit feedback' });
+    res.status(500).json({ success: false, message: 'Failed to submit feedback' });
   }
+});
+
+// 404 handler for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    success: false, 
+    message: 'Route not found',
+    path: req.path 
+  });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('❌ Error:', err);
+  res.status(500).json({ 
+    success: false, 
+    message: 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Backend URL: http://0.0.0.0:${PORT}`);
 });
