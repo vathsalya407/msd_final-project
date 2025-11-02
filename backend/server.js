@@ -2,17 +2,17 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
+
 const app = express();
 
-// Middleware
+// Middleware - CORS with environment variable support
 app.use(cors({
   origin: process.env.FRONTEND_URL || '*',
   credentials: true
 }));
 app.use(express.json());
 
-// MongoDB Connection - Updated with New Atlas Connection String
+// MongoDB Connection - Updated with environment variable and better error handling
 mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://231fa04195user:vasu@food.5rxumwc.mongodb.net/food?retryWrites=true&w=majority&appName=food', {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -21,9 +21,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://231fa04195user:vasu@f
 .catch(err => console.error('❌ MongoDB connection error:', err));
 
 const db = mongoose.connection;
-db.on('error', console.error.bind(console, 'connection error:'));
+db.on('error', console.error.bind(console, '❌ Connection error:'));
 db.once('open', () => {
-  console.log('Connected to MongoDB Atlas');
+  console.log('✅ MongoDB Connected - Database Ready');
 });
 
 // Schemas
@@ -80,6 +80,15 @@ const Order = mongoose.model('Order', orderSchema);
 
 // Routes
 
+// Health check route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'FoodExpress API is running!', 
+    status: 'OK',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -101,6 +110,8 @@ app.post('/api/auth/register', async (req, res) => {
     });
     await user.save();
 
+    console.log('✅ User registered:', email);
+
     res.json({ 
       success: true, 
       message: 'Registration successful',
@@ -115,6 +126,7 @@ app.post('/api/auth/register', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('❌ Registration error:', error);
     res.json({ success: false, message: 'Registration failed' });
   }
 });
@@ -127,6 +139,8 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) {
       return res.json({ success: false, message: 'Invalid credentials' });
     }
+
+    console.log('✅ User logged in:', email);
 
     res.json({ 
       success: true, 
@@ -142,6 +156,7 @@ app.post('/api/auth/login', async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('❌ Login error:', error);
     res.json({ success: false, message: 'Login failed' });
   }
 });
@@ -150,27 +165,37 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/food/items', async (req, res) => {
   try {
     const items = await Food.find();
+    console.log(`📋 Fetched ${items.length} food items`);
     res.json({ success: true, items });
   } catch (error) {
+    console.error('❌ Fetch items error:', error);
     res.json({ success: false, message: 'Failed to fetch items' });
   }
 });
 
 app.post('/api/food/add', async (req, res) => {
   try {
+    console.log('📝 Received food item:', req.body);
+    
     const food = new Food(req.body);
-    await food.save();
-    res.json({ success: true, message: 'Food item added', food });
+    const savedFood = await food.save();
+    
+    console.log('✅ Food item saved to DB:', savedFood._id);
+    
+    res.json({ success: true, message: 'Food item added', food: savedFood });
   } catch (error) {
-    res.json({ success: false, message: 'Failed to add food item' });
+    console.error('❌ Error saving food item:', error);
+    res.status(500).json({ success: false, message: 'Failed to add food item', error: error.message });
   }
 });
 
 app.delete('/api/food/delete/:id', async (req, res) => {
   try {
     await Food.findByIdAndDelete(req.params.id);
+    console.log('🗑️ Food item deleted:', req.params.id);
     res.json({ success: true, message: 'Food item deleted' });
   } catch (error) {
+    console.error('❌ Delete error:', error);
     res.json({ success: false, message: 'Failed to delete food item' });
   }
 });
@@ -179,9 +204,11 @@ app.delete('/api/food/delete/:id', async (req, res) => {
 app.post('/api/orders/create', async (req, res) => {
   try {
     const order = new Order(req.body);
-    await order.save();
-    res.json({ success: true, message: 'Order placed successfully', order });
+    const savedOrder = await order.save();
+    console.log('✅ Order created:', savedOrder._id);
+    res.json({ success: true, message: 'Order placed successfully', order: savedOrder });
   } catch (error) {
+    console.error('❌ Create order error:', error);
     res.json({ success: false, message: 'Failed to place order' });
   }
 });
@@ -189,8 +216,10 @@ app.post('/api/orders/create', async (req, res) => {
 app.get('/api/orders/customer/:customerId', async (req, res) => {
   try {
     const orders = await Order.find({ customerId: req.params.customerId }).sort({ createdAt: -1 });
+    console.log(`📦 Fetched ${orders.length} orders for customer:`, req.params.customerId);
     res.json({ success: true, orders });
   } catch (error) {
+    console.error('❌ Fetch customer orders error:', error);
     res.json({ success: false, message: 'Failed to fetch orders' });
   }
 });
@@ -198,8 +227,10 @@ app.get('/api/orders/customer/:customerId', async (req, res) => {
 app.get('/api/orders/all', async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
+    console.log(`📦 Fetched ${orders.length} total orders`);
     res.json({ success: true, orders });
   } catch (error) {
+    console.error('❌ Fetch all orders error:', error);
     res.json({ success: false, message: 'Failed to fetch orders' });
   }
 });
@@ -212,8 +243,10 @@ app.put('/api/orders/update-status', async (req, res) => {
       { status },
       { new: true }
     );
+    console.log('✅ Order status updated:', orderId, '→', status);
     res.json({ success: true, message: 'Order status updated', order });
   } catch (error) {
+    console.error('❌ Update status error:', error);
     res.json({ success: false, message: 'Failed to update order status' });
   }
 });
@@ -232,21 +265,17 @@ app.put('/api/orders/feedback', async (req, res) => {
       },
       { new: true }
     );
+    console.log('✅ Feedback submitted for order:', orderId);
     res.json({ success: true, message: 'Feedback submitted', order });
   } catch (error) {
+    console.error('❌ Feedback error:', error);
     res.json({ success: false, message: 'Failed to submit feedback' });
   }
 });
 
-// Food items can be added through the Owner Dashboard
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-  });
-}
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
